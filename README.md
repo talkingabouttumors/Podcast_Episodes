@@ -38,3 +38,11 @@ Total episode cards loaded: 50
 Reference sections were generated from the uploaded show notes. DOI strings were converted to links of the form:
 
 `https://doi.org/[DOI]`
+
+
+## Proofreading pass
+
+- Removed visible source Word-document filenames from episode cards.
+- Removed `source_file` from `data/episodes.json`.
+- Checked internal links/assets and JSON validity.
+- Corrected a small number of visible typographic errors in episode titles/topics.
