@@ -806,7 +806,7 @@ svg {
       <input class="form-range" id="ope-hr" type="range" min="0.50" max="0.98" step="0.01" value="0.75">
     </label>
     <label class="ope-control form-label" for="ope-event">
-      <span class="ope-control-head"><span>Control event rate</span><span class="ope-value" id="ope-event-value">50%</span></span>
+      <span class="ope-control-head"><span>Total event rate</span><span class="ope-value" id="ope-event-value">50%</span></span>
       <input class="form-range" id="ope-event" type="range" min="10" max="100" step="1" value="50">
     </label>
   </div>
@@ -864,7 +864,7 @@ svg {
       <g id="ope-axes"></g>
     </svg>
   </div>
-  <div class="ope-foot text-small text-muted">Log-rank/Schoenfeld approximation; assumes proportional hazards, uniform observation window, and no additional loss to follow-up.</div>
+  <div class="ope-foot text-small text-muted">Log-rank/Schoenfeld approximation; the total event rate is the proportion of all randomized participants expected to experience the event by analysis.</div>
 
   <script>
     (function () {
@@ -931,14 +931,8 @@ svg {
         return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
       }
 
-      function expectedEventFraction(controlRate, hr, experimentalFraction) {
-        var experimentalRate = 1 - Math.pow(1 - controlRate, hr);
-        return (1 - experimentalFraction) * controlRate + experimentalFraction * experimentalRate;
-      }
-
-      function achievedPower(n, controlRate, hr, experimentalFraction, alpha) {
-        var eventFraction = expectedEventFraction(controlRate, hr, experimentalFraction);
-        var events = n * eventFraction;
+      function achievedPower(n, totalEventRate, hr, experimentalFraction, alpha) {
+        var events = n * totalEventRate;
         var information = events * experimentalFraction * (1 - experimentalFraction);
         var za = normalInv(1 - alpha / 2);
         var noncentrality = Math.sqrt(information) * Math.abs(Math.log(hr));
@@ -959,29 +953,27 @@ svg {
       function update() {
         var n = Number(el.n.value);
         var hr = Number(el.hr.value);
-        var controlRate = Number(el.event.value) / 100;
+        var totalEventRate = Number(el.event.value) / 100;
         var alpha = Number(el.alpha.value);
         var experimentalFraction = Number(el.allocation.value);
         var targetPower = Number(el.target.value);
-        var eventFraction = expectedEventFraction(controlRate, hr, experimentalFraction);
-        var events = n * eventFraction;
-        var power = achievedPower(n, controlRate, hr, experimentalFraction, alpha);
+        var events = n * totalEventRate;
+        var power = achievedPower(n, totalEventRate, hr, experimentalFraction, alpha);
         var za = normalInv(1 - alpha / 2);
         var zb = normalInv(targetPower);
         var requiredEvents = Math.pow(za + zb, 2) / (experimentalFraction * (1 - experimentalFraction) * Math.pow(Math.log(hr), 2));
-        var requiredN = requiredEvents / eventFraction;
-        var experimentalRate = 1 - Math.pow(1 - controlRate, hr);
+        var requiredN = requiredEvents / totalEventRate;
 
         el.nValue.textContent = n.toLocaleString();
         el.hrValue.textContent = hr.toFixed(2);
-        el.eventValue.textContent = Math.round(controlRate * 100) + "%";
+        el.eventValue.textContent = Math.round(totalEventRate * 100) + "%";
         el.power.textContent = (power * 100).toFixed(1) + "%";
         el.powerContext.textContent = power >= targetPower ? "Meets the selected target" : "Below the selected target";
         el.events.textContent = Math.round(events).toLocaleString();
-        el.eventsContext.textContent = (eventFraction * 100).toFixed(1) + "% overall event fraction";
+        el.eventsContext.textContent = (totalEventRate * 100).toFixed(1) + "% of randomized participants";
         el.requiredN.textContent = Math.ceil(requiredN / 2) * 2;
         el.requiredContext.textContent = Math.ceil(requiredEvents) + " events for " + Math.round(targetPower * 100) + "% power";
-        el.chartDesc.textContent = "With " + n + " participants, a control event rate of " + Math.round(controlRate * 100) + " percent, and a hazard ratio of " + hr.toFixed(2) + ", achieved power is " + (power * 100).toFixed(1) + " percent. The implied experimental-arm event rate is " + (experimentalRate * 100).toFixed(1) + " percent.";
+        el.chartDesc.textContent = "With " + n + " participants, a total event rate of " + Math.round(totalEventRate * 100) + " percent, and a hazard ratio of " + hr.toFixed(2) + ", achieved power is " + (power * 100).toFixed(1) + " percent.";
 
         var W = 720;
         var H = 340;
@@ -1008,7 +1000,7 @@ svg {
         el.axes.appendChild(svgNode("text", { x: 16, y: (m.top + H - m.bottom) / 2, transform: "rotate(-90 16 " + ((m.top + H - m.bottom) / 2) + ")", "text-anchor": "middle", "class": "ope-label" }, "Achieved power"));
 
         var points = [];
-        for (var h = xMin; h <= 0.995; h += 0.005) points.push([x(h), y(achievedPower(n, controlRate, h, experimentalFraction, alpha))]);
+        for (var h = xMin; h <= 0.995; h += 0.005) points.push([x(h), y(achievedPower(n, totalEventRate, h, experimentalFraction, alpha))]);
         el.line.setAttribute("d", pathFrom(points));
         el.targetLine.setAttribute("d", "M" + m.left + " " + y(targetPower) + " L" + (W - m.right) + " " + y(targetPower));
 
